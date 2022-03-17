@@ -593,6 +593,9 @@ enum {
 	/* Indicate whether there are any tree modification log users */
 	BTRFS_FS_TREE_MOD_LOG_USERS,
 
+	/* Indicate we have half completed snapshot deletions pending. */
+	BTRFS_FS_UNFINISHED_DROPS,
+
 #if BITS_PER_LONG == 32
 	/* Indicate if we have error/warn message printed on 32bit systems */
 	BTRFS_FS_32BIT_ERROR,
@@ -1017,6 +1020,13 @@ struct btrfs_fs_info {
 	spinlock_t treelog_bg_lock;
 	u64 treelog_bg;
 
+	/*
+	 * Start of the dedicated data relocation block group, protected by
+	 * relocation_bg_lock.
+	 */
+	spinlock_t relocation_bg_lock;
+	u64 data_reloc_bg;
+
 #ifdef CONFIG_BTRFS_FS_REF_VERIFY
 	spinlock_t ref_verify_lock;
 	struct rb_root block_tree;
@@ -1091,7 +1101,14 @@ enum {
 	BTRFS_ROOT_HAS_LOG_TREE,
 	/* Qgroup flushing is in progress */
 	BTRFS_ROOT_QGROUP_FLUSHING,
+	/* This root has a drop operation that was started previously. */
+	BTRFS_ROOT_UNFINISHED_DROP,
 };
+
+static inline void btrfs_wake_unfinished_drop(struct btrfs_fs_info *fs_info)
+{
+	clear_and_wake_up_bit(BTRFS_FS_UNFINISHED_DROPS, &fs_info->flags);
+}
 
 /*
  * Record swapped tree blocks of a subvolume tree for delayed subtree trace
@@ -3840,6 +3857,11 @@ static inline int btrfs_is_testing(struct btrfs_fs_info *fs_info)
 static inline bool btrfs_is_zoned(const struct btrfs_fs_info *fs_info)
 {
 	return fs_info->zoned != 0;
+}
+
+static inline bool btrfs_is_data_reloc_root(const struct btrfs_root *root)
+{
+	return root->root_key.objectid == BTRFS_DATA_RELOC_TREE_OBJECTID;
 }
 
 /*
