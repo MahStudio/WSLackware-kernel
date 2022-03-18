@@ -48,6 +48,7 @@ file](https://docs.microsoft.com/en-us/windows/wsl/wsl-config#configure-global-o
 
 - Linus Torvalds and all of the Linux community for making this kernel
 - Microsoft for WSL2 and kernel patches
+- [Iouri Tarassov](mailto:iourit@microsoft.com) for DirectX and Hyper-V patches
 
 ### Contributing
 
